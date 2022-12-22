@@ -1078,6 +1078,17 @@ class RoutingRouteTest extends TestCase
         $this->assertSame('12345', $router->dispatch(Request::create('foo-bar/12345', 'GET'))->getContent());
     }
 
+    public function testModelBindingWithCustomKey()
+    {
+        $router = $this->getRouter();
+        $router->model('bar', RouteModelBindingStub::class);
+        $router->get('foo/{bar:custom}', ['middleware' => SubstituteBindings::class, 'uses' => function ($bar) {
+            return $bar;
+        }]);
+
+        $this->assertSame('TAYLOR.CUSTOM', $router->dispatch(Request::create('foo/taylor', 'GET'))->getContent());
+    }
+
     public function testModelBindingThroughIOC()
     {
         $container = new Container;
@@ -2351,6 +2362,10 @@ class RouteModelBindingStub extends Model
 
     public function where($key, $value)
     {
+        if ($key != $this->getRouteKeyName()) {
+            $this->key = $key;
+        }
+
         $this->value = $value;
 
         return $this;
@@ -2358,7 +2373,7 @@ class RouteModelBindingStub extends Model
 
     public function first()
     {
-        return strtoupper($this->value);
+        return strtoupper($this->value . ($this->key ? ".{$this->key}" : ''));
     }
 }
 
